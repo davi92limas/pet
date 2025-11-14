@@ -1,0 +1,242 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  tutorProfile    Tutor?
+  adocoes         Adocao[]
+  doacoes         Doacao[]
+  denuncias       Denuncia[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model Cidade {
+  id        String   @id @default(uuid())
+  nome      String
+  estado    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  tutores     Tutor[]
+  veterinarios Veterinario[]
+
+  @@map("cidades")
+}
+
+model Tutor {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  cidadeId  String
+  telefone  String
+  endereco  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cidade    Cidade   @relation(fields: [cidadeId], references: [id])
+  animais   Animal[]
+  consultas Consulta[]
+  denuncias Denuncia[]
+
+  @@map("tutores")
+}
+
+model Veterinario {
+  id        String   @id @default(uuid())
+  nome      String
+  crmv      String   @unique
+  cidadeId  String
+  telefone  String
+  especialidade String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  cidade    Cidade   @relation(fields: [cidadeId], references: [id])
+  consultas Consulta[]
+  cirurgias Cirurgia[]
+
+  @@map("veterinarios")
+}
+
+model Animal {
+  id          String      @id @default(uuid())
+  nome        String
+  especie     String
+  raca        String?
+  idade       Int?
+  peso        Float?
+  descricao   String?
+  status      AnimalStatus @default(DISPONIVEL)
+  foto        String?
+  tutorId     String?
+  instituicaoId String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relações
+  tutor       Tutor?      @relation(fields: [tutorId], references: [id])
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+  consultas   Consulta[]
+  cirurgias   Cirurgia[]
+  adocoes     Adocao[]
+
+  @@map("animais")
+}
+
+enum AnimalStatus {
+  DISPONIVEL
+  ADOTADO
+  EM_TRATAMENTO
+}
+
+model Instituicao {
+  id        String   @id @default(uuid())
+  nome      String
+  cnpj      String   @unique
+  endereco  String
+  telefone  String
+  cidade    String
+  estado    String
+  descricao String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  animais   Animal[]
+  doacoes   Doacao[]
+
+  @@map("instituicoes")
+}
+
+model Consulta {
+  id            String   @id @default(uuid())
+  data          DateTime
+  descricao     String?
+  animalId      String
+  veterinarioId String
+  tutorId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relações
+  animal      Animal      @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  veterinario Veterinario @relation(fields: [veterinarioId], references: [id], onDelete: Restrict)
+  tutor       Tutor?      @relation(fields: [tutorId], references: [id])
+
+  @@map("consultas")
+}
+
+model Cirurgia {
+  id            String   @id @default(uuid())
+  data          DateTime
+  descricao     String?
+  animalId      String
+  veterinarioId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relações
+  animal      Animal      @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  veterinario Veterinario @relation(fields: [veterinarioId], references: [id])
+
+  @@map("cirurgias")
+}
+
+model Adocao {
+  id        String      @id @default(uuid())
+  userId    String
+  animalId  String
+  status    AdocaoStatus @default(PENDENTE)
+  observacoes String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relações
+  user      User        @relation(fields: [userId], references: [id])
+  animal    Animal      @relation(fields: [animalId], references: [id])
+
+  @@map("adocoes")
+}
+
+enum AdocaoStatus {
+  PENDENTE
+  APROVADA
+  REJEITADA
+  CONCLUIDA
+}
+
+model Doacao {
+  id            String   @id @default(uuid())
+  userId        String
+  instituicaoId String
+  item          String
+  quantidade    Int
+  descricao     String?
+  status        DoacaoStatus @default(PENDENTE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relações
+  user        User        @relation(fields: [userId], references: [id])
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id])
+
+  @@map("doacoes")
+}
+
+enum DoacaoStatus {
+  PENDENTE
+  CONFIRMADA
+  ENTREGUE
+  CANCELADA
+}
+
+model Denuncia {
+  id        String   @id @default(uuid())
+  userId    String
+  tutorId   String
+  motivo    String
+  descricao String?
+  status    DenunciaStatus @default(PENDENTE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  user      User      @relation(fields: [userId], references: [id])
+  tutor     Tutor     @relation(fields: [tutorId], references: [id])
+
+  @@map("denuncias")
+}
+
+enum DenunciaStatus {
+  PENDENTE
+  ANALISANDO
+  RESOLVIDA
+  DESCARTADA
+}
+

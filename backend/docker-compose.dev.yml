@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: helppet-postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: helppet
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-dev:
+    build: .
+    container_name: helppet-backend-dev
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/helppet?schema=public"
+      JWT_SECRET: "helppet-secret-key-change-in-production"
+      JWT_EXPIRES_IN: "7d"
+      PORT: 3001
+    command: >
+      sh -lc "npm ci && rm -f tsconfig.build.tsbuildinfo && npm run build && npm run start:dev"
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+
+
